@@ -29,7 +29,12 @@ export const ingestSingle = async(req,res)=>{
         });
 
         writeApi.writePoint(point);
-        await writeApi.flush();
+       try {
+           await writeApi.flush();
+        } catch (err) {
+            console.error("Failed to write to InfluxDB:", err);
+            return res.status(503).json({ error: "Database temporarily unavailable" });
+        }
 
         res.status(200).json({message:"Record ingested successfully"});    
     } catch(err){
