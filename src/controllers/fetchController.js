@@ -12,18 +12,12 @@ const isIsoDatetime = (v) => {
   return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?$/.test(String(v));
 };
 
-/**
- * Format a value for Flux range():
- * - duration: return raw (e.g. -1h)
- * - ISO timestamp: wrap as time(v: "...")
- * - undefined/null: return null
- */
+
 const fluxTime = (v) => {
   if (v === undefined || v === null) return null;
   const s = String(v).trim();
   if (isDuration(s)) return s; // no quotes
-  if (isIsoDatetime(s)) return `time(v: ${JSON.stringify(s)})`; // time(v: "2025-...")
-  // fallback: try to use time() wrapper
+  if (isIsoDatetime(s)) return `time(v: ${JSON.stringify(s)})`; 
   return `time(v: ${JSON.stringify(s)})`;
 };
 
@@ -38,7 +32,7 @@ export const fetchRaw = async (req, res) => {
     const startFlux = fluxTime(start);
     const endFlux = fluxTime(end);
 
-    // build range clause carefully
+  
     const rangeClause = endFlux ? `range(start: ${startFlux}, stop: ${endFlux})` : `range(start: ${startFlux})`;
 
     const flux = `
@@ -57,15 +51,24 @@ export const fetchRaw = async (req, res) => {
   }
 };
 
-/** fetchAggregated */
+
 export const fetchAggregated = async (req, res) => {
   try {
     const { deviceId } = req.query;
-    let { start = "-24h", end, window = "1m" } = req.query;
+    let { start = "-24h", end, window = "1m",fn = "mean" } = req.query;
 
     if (!deviceId) return res.status(400).json({ error: "deviceId is required" });
+    const allowedFns = ["mean", "max", "min", "sum", "count"];
+    const aggregationFn = fn.toLowerCase();
 
-    // validate start/end and format for Flux
+    if (!allowedFns.includes(aggregationFn)) {
+      return res.status(400).json({ 
+        error: `Unsupported aggregation function. Allowed: ${allowedFns.join(", ")}`,
+        received: fn
+      });
+    }
+
+    
     const startFlux = fluxTime(start);
     const endFlux = fluxTime(end);
     const rangeClause = endFlux ? `range(start: ${startFlux}, stop: ${endFlux})` : `range(start: ${startFlux})`;
@@ -76,17 +79,18 @@ export const fetchAggregated = async (req, res) => {
       return res.status(400).json({ error: "window must be like '1m', '30s', '1h', '1d' (no quotes)" });
     }
 
-    // windowFlux must be inserted raw (no quotes)
+    
     const windowFlux = windowTrim;
 
     const flux = `
       from(bucket: "${process.env.INFLUX_BUCKET}")
         |> ${rangeClause}
         |> filter(fn: (r) => r.deviceId == "${deviceId}")
-        |> aggregateWindow(every: ${windowFlux}, fn: mean, createEmpty: false)
+        |> aggregateWindow(every: ${windowFlux}, fn: ${aggregationFn}, createEmpty: false)
         |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
         |> sort(columns: ["_time"])
     `;
+    console.log('Aggregated Flux Query:', flux)
 
     const rows = await queryApi.collectRows(flux);
     res.json(rows);

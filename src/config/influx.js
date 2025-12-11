@@ -4,7 +4,7 @@ dotenv.config();
 
 const influxDB = new InfluxDB({
     url:process.env.INFLUX_URL,
-    token:"HJHzC1LCfglOFOSLBaSmclHBYx7CsEzNtMGAIBL6CvEZjEdYjjy1VZVMEe5B-VrxWGLDStwbBREHuldM8ScfEg==",
+    token:process.env.INFLUX_TOKEN,
 });
 
 

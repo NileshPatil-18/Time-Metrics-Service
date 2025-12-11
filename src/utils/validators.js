@@ -9,3 +9,11 @@ export const validateRecord = (record)=>{
     }
     return true;
 };
+export const isValidTimestamp = (t) => {
+       if (!t || typeof t !== 'string') return false;
+    
+    const trimmedTimestamp = t.trim();
+
+    const ms = Date.parse(trimmedTimestamp);
+    return !Number.isNaN(ms);
+};
