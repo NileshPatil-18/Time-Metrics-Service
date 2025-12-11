@@ -4,6 +4,8 @@ export const validateRecord = (record)=>{
 
     if(typeof record.metrics !== "object") return false;
 
-    
+    for(let key in record.metrics){
+        if(typeof record.metrics[key] !== "number") return false;
+    }
     return true;
 };
