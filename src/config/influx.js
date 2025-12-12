@@ -8,7 +8,6 @@ const influxDB = new InfluxDB({
 });
 
 
-
 export const writeApi = influxDB.getWriteApi(
     process.env.INFLUX_ORG,
     process.env.INFLUX_BUCKET,
